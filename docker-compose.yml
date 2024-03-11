@@ -1,0 +1,79 @@
+version: '3'
+services:
+  to-do:
+    image: to-do:latest
+    container_name: to-do
+    restart: always
+    ports:
+      - 3000:3000
+    depends_on:
+      - db
+    networks:
+      - applications
+  db:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    container_name: postgres
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - applications
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    container_name: nest-pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=pgadmin4
+    ports:
+      - '5050:80'
+    depends_on:
+      - db
+    networks:
+      - applications
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - applications
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./templates:/etc/nginx/templates
+    ports:
+      - "8080:80"
+    environment:
+      - NGINX_HOST=foobar.com
+      - NGINX_PORT=80
+    depends_on:
+      - to-do
+    networks:
+      - applications
+volumes:
+  data01:
+    driver: local
+
+networks:
+  applications:
+    driver: bridge
